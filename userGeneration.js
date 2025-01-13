@@ -25,3 +25,7 @@ function randomBirthDate() {
     let date = Math.floor(Math.random() * 30.5);
     return (new Date(Date.UTC(year, month, date))).toISOString();
 }
+
+function randomSSN() {
+    return Math.floor(Math.random * 1000000000);
+}
