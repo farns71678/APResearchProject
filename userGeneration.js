@@ -29,3 +29,7 @@ function randomBirthDate() {
 function randomSSN() {
     return Math.floor(Math.random * 1000000000);
 }
+
+function randomGender() {
+    return (Math.random() * 2 < 1);
+}
