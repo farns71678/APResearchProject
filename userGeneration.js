@@ -12,31 +12,48 @@ app.get("/", (req, res) => {
 });
 
 app.get("/generate", async (req, res) => {
-    if (req.query.count == undefined) {
-        console.log("/generate request send without 'count' parameter");
-        res.send("Error: include count parameter in request.");
-        return;
-    }
+    try {
+        if (req.query.count == undefined) {
+            console.log("/generate request send without 'count' parameter");
+            res.send("Error: include count parameter in request.");
+            return;
+        }
 
-    let male = await readFirstNames('/maleNames.csv');
-    if (male == null) {
-        res.send("An unexpected error occured when trying to parse names.");
-        return;
-    }
-    let female = await readFirstNames('/femaleNames.csv');
-    if (female == null) {
-        res.send("An unexpected error occured when trying to parse names.");
-        return;
-    }
+        if (maleData == null) {
+            let male = await readFirstNames('/maleNames.csv');
+            if (male == null) {
+                res.send("An unexpected error occured when trying to parse names.");
+                return;
+            }
+            maleData = await parseNames(male);
+        }
 
-    maleData = male;
-    femaleData = female;
+        if (femaleData == null) {
+            let female = await readFirstNames('/femaleNames.csv');
+            if (female == null) {
+                res.send("An unexpected error occured when trying to parse names.");
+                return;
+            }
+            femaleData = await parseNames(female);
+        }
 
-    let people = [];
-    for (let i = 0; i < req.query.count; i++) {
-        people.push(createUser());
+
+        let people = [];
+        for (let i = 0; i < parseInt(req.query.count); i++) {
+            people.push(createUser());
+        }
+
+        let response = "";
+        people.forEach((person) => {
+            response += "<div>" + person.name + "</div>";
+        });
+
+        res.send(response);
     }
-
+    catch (err) {
+        console.log("An unexpected error has occured in /generate: \n" + err);
+        res.send("Sorry, and error has occured");
+    }
 });
 
 app.get("/names", async (req, res) => {
@@ -94,26 +111,34 @@ function randomGender() {
 // generates random name (first and last)
 // first names are created using the top 1000 names in US from https://www.thenamegeek.com/most-common-female-names based off of data from SSA
 function randomName(gender) {
-    let data = null;
-    if (gender) data = femaleData;
-    else data = maleData;
+    if (femaleData == null || maleData == null) throw new TypeError("'femaleData' or 'maleData' is null. ");
+    let data = (gender ? femaleData : maleData);
     const max = data[data.length - 1].num;
     let target = Math.random() * max;
-
-
+    console.log(max + ", " + target);
+    let ret = findName(data, target, 0, data.length - 1);
+    return ret;
 }
 
 // uses binary search to approxamate name
 function findName(data, target, start, end) {
-    if (start == end) {
-        
+    while (start <= end) {
+        let mid = Math.floor(start + (end - start) / 2);
+        if (data[mid].num > target) end = mid - 1;
+        else if (data[mid].num < target) start = mid + 1;
+        else return data[mid].name;
     }
+    return data[start].name;
+}
 
-    let mid = Math.round(start + (start - end) / 2);
+/*function findName(data, target, start, end) {
+    if (start == end) return data[start].name;
+
+    let mid = Math.round(start + (end - start) / 2);
     if (data[mid].num > target) return findName(data, target, mid, end);
     else if (data[mid].num < target) return findName(data, target, start, mid);
     else return data[mid].name;
-}
+}*/
 
 async function readFirstNames(file) {
     try {
@@ -129,12 +154,12 @@ async function readFirstNames(file) {
 async function parseNames(data) {
     try { 
         let rows = data.split('\n');
-        let ret = Array.apply(null, Array(rows.length));
+        let ret = [];
         let total = 0;
         for (let i = 0; i < rows.length; i++) {
             let row = rows[i].split(',');
             total += parseInt(row[2]);
-            ret[i] = { name: row[1], num: total };
+            ret.push({ name: row[1], num: total });
         }
         return ret;
     }
