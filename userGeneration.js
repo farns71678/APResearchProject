@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const express = require('express');
+const axios = require('axios');
 const app = express();
 const port = 3000;
 let maleData = null;
@@ -18,6 +19,8 @@ app.get("/generate", async (req, res) => {
             res.send("Error: include count parameter in request.");
             return;
         }
+
+        console.log('/generate queried with count=%d', parseInt(req.query.count));
 
         if (maleData == null) {
             let male = await readFirstNames('/maleNames.csv');
@@ -49,6 +52,7 @@ app.get("/generate", async (req, res) => {
         });
 
         res.send(response);
+        console.log("/generate query completed successfully");
     }
     catch (err) {
         console.log("An unexpected error has occured in /generate: \n" + err);
@@ -115,7 +119,6 @@ function randomName(gender) {
     let data = (gender ? femaleData : maleData);
     const max = data[data.length - 1].num;
     let target = Math.random() * max;
-    console.log(max + ", " + target);
     let ret = findName(data, target, 0, data.length - 1);
     return ret;
 }
@@ -168,3 +171,15 @@ async function parseNames(data) {
         return null;
     }
 }
+
+axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
+    const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
+    console.log('Status Code:', res.status);
+    console.log('Date in Response header:', headerDate);
+
+    const users = res.data;
+    console.log(users);
+    /*for(let user of users) {
+        console.log(`Got user with id: ${user.id}, name: ${user.name}`);
+    }*/
+});
