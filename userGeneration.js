@@ -5,6 +5,7 @@ const app = express();
 const port = 3000;
 let maleData = null;
 let femaleData = null;
+let surnameData = null;
 
 console.log(randomBirthDate());
 
@@ -23,21 +24,30 @@ app.get("/generate", async (req, res) => {
         console.log('/generate queried with count=%d', parseInt(req.query.count));
 
         if (maleData == null) {
-            let male = await readFirstNames('/maleNames.csv');
+            let male = await readNames('/maleNames.csv');
             if (male == null) {
-                res.send("An unexpected error occured when trying to parse names.");
+                res.send("An unexpected error occured when trying to parse male first names.");
                 return;
             }
             maleData = await parseNames(male);
         }
 
         if (femaleData == null) {
-            let female = await readFirstNames('/femaleNames.csv');
+            let female = await readNames('/femaleNames.csv');
             if (female == null) {
-                res.send("An unexpected error occured when trying to parse names.");
+                res.send("An unexpected error occured when trying to parse female first names.");
                 return;
             }
             femaleData = await parseNames(female);
+        }
+
+        if (surnameData == null) {
+            let surname = await readNames('/lastNames.csv');
+            if (surname == null) {
+                res.send("An unexpected error occured when trying to parse surnames.");
+                return;
+            }
+            surnameData = await parseNames(surname);
         }
 
 
@@ -48,7 +58,7 @@ app.get("/generate", async (req, res) => {
 
         let response = "";
         people.forEach((person) => {
-            response += "<div>" + person.name + "</div>";
+            response += "<div>" + person.name + " " + person.surname + "</div>";
         });
 
         res.send(response);
@@ -92,7 +102,7 @@ app.listen(port, () => {
 function createUser() {
     // gender: false = male, true = female
     let g = randomGender();
-    return { name: randomName(g), birthdate: randomBirthDate() /*, email: ""*/, ssn: randomSSN(), gender: g};
+    return { name: randomName((g ? femaleData : maleData)), surname: randomName(surnameData), birthdate: randomBirthDate() /*, email: ""*/, ssn: randomSSN(), gender: g};
 }
 
 // creates a random birth date from 1940 to 2040
@@ -114,9 +124,8 @@ function randomGender() {
 
 // generates random name (first and last)
 // first names are created using the top 1000 names in US from https://www.thenamegeek.com/most-common-female-names based off of data from SSA
-function randomName(gender) {
-    if (femaleData == null || maleData == null) throw new TypeError("'femaleData' or 'maleData' is null. ");
-    let data = (gender ? femaleData : maleData);
+// surname data in US from https://namecensus.com/last-names/ with a total of 5000 names;
+function randomName(data) {
     const max = data[data.length - 1].num;
     let target = Math.random() * max;
     let ret = findName(data, target, 0, data.length - 1);
@@ -143,7 +152,7 @@ function findName(data, target, start, end) {
     else return data[mid].name;
 }*/
 
-async function readFirstNames(file) {
+async function readNames(file) {
     try {
         let data = await fs.readFile(__dirname + file, {encoding: 'utf-8'});
         return data;
@@ -161,8 +170,8 @@ async function parseNames(data) {
         let total = 0;
         for (let i = 0; i < rows.length; i++) {
             let row = rows[i].split(',');
-            total += parseInt(row[2]);
-            ret.push({ name: row[1], num: total });
+            total += parseInt(row[1]);
+            ret.push({ name: row[0], num: total });
         }
         return ret;
     }
@@ -172,6 +181,7 @@ async function parseNames(data) {
     }
 }
 
+/*
 axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
     const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
     console.log('Status Code:', res.status);
@@ -181,5 +191,6 @@ axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
     console.log(users);
     /*for(let user of users) {
         console.log(`Got user with id: ${user.id}, name: ${user.name}`);
-    }*/
+    }
 });
+*/
