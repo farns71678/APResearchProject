@@ -7,17 +7,25 @@ let maleData = null;
 let femaleData = null;
 let surnameData = null;
 
+// data from statista
+const emailDomains = [
+    { name: "icloud.com", percent: 56.75 },
+    { name: "gmail.com", percent: 32.32 },
+    { name: "outlook.com", percent: 6.74 },
+    { name: "yahoo.com", percent: 4.20 }
+];
+
 console.log(randomBirthDate());
 
 app.get("/", (req, res) => {
-    res.send("Random User: " + randomBirthDate());
+    res.sendFile(__dirname + "/getExample.html");
 });
 
 app.get("/generate", async (req, res) => {
     try {
         if (req.query.count == undefined) {
             console.log("/generate request send without 'count' parameter");
-            res.send("Error: include count parameter in request.");
+            res.status(400).send("Error: include count parameter in request.");
             return;
         }
 
@@ -26,7 +34,7 @@ app.get("/generate", async (req, res) => {
         if (maleData == null) {
             let male = await readNames('/maleNames.csv');
             if (male == null) {
-                res.send("An unexpected error occured when trying to parse male first names.");
+                res.status(400).send("An unexpected error occured when trying to parse male first names.");
                 return;
             }
             maleData = await parseNames(male);
@@ -35,7 +43,7 @@ app.get("/generate", async (req, res) => {
         if (femaleData == null) {
             let female = await readNames('/femaleNames.csv');
             if (female == null) {
-                res.send("An unexpected error occured when trying to parse female first names.");
+                res.status(400).send("An unexpected error occured when trying to parse female first names.");
                 return;
             }
             femaleData = await parseNames(female);
@@ -44,7 +52,7 @@ app.get("/generate", async (req, res) => {
         if (surnameData == null) {
             let surname = await readNames('/lastNames.csv');
             if (surname == null) {
-                res.send("An unexpected error occured when trying to parse surnames.");
+                res.status(400).send("An unexpected error occured when trying to parse surnames.");
                 return;
             }
             surnameData = await parseNames(surname);
@@ -56,17 +64,19 @@ app.get("/generate", async (req, res) => {
             people.push(createUser());
         }
 
-        let response = "";
-        people.forEach((person) => {
-            response += "<div>" + person.name + " " + person.surname + "</div>";
-        });
+        let response = { users: people };
+        /*people.forEach((person) => {
+            //response += "<div>" + person.name + " " + person.surname + "</div>";
 
-        res.send(response);
+        });*/
+
+        res.setHeader("Content-Type", "application/json");
+        res.send(JSON.stringify(response));
         console.log("/generate query completed successfully");
     }
     catch (err) {
         console.log("An unexpected error has occured in /generate: \n" + err);
-        res.send("Sorry, and error has occured");
+        res.status(400).send("Sorry, and error has occured");
     }
 });
 
@@ -102,7 +112,9 @@ app.listen(port, () => {
 function createUser() {
     // gender: false = male, true = female
     let g = randomGender();
-    return { name: randomName((g ? femaleData : maleData)), surname: randomName(surnameData), birthdate: randomBirthDate() /*, email: ""*/, ssn: randomSSN(), gender: g};
+    let user = { name: randomName((g ? femaleData : maleData)), surname: randomName(surnameData), birthdate: randomBirthDate(), email: "", ssn: randomSSN(), gender: g};
+    user.email = randomEmail(user.name, user.surname);
+    return user;
 }
 
 // creates a random birth date from 1940 to 2040
@@ -142,6 +154,23 @@ function findName(data, target, start, end) {
     }
     return data[start].name;
 }
+
+// makes a random email in the format first.lastNN@domain
+function randomEmail(firstName, surname) {
+    let randDigits = "";
+    if (Math.random() < 0.85) randDigits = Math.floor(Math.random() * 100);
+    let percent = Math.random() * 100;
+    let provider = "";
+    let total = 0;
+    for (let i = emailDomains.length - 1; i >= 0 && provider == ""; i--) {
+        total += emailDomains[i].percent;
+        if (total >= percent) provider = emailDomains[i].name;
+    }
+    if (provider == "") provider = "gmail.com";
+
+    return firstName.toLower() + "." + surname.toLower() + randDigits + "@" + provider;
+}
+
 
 /*function findName(data, target, start, end) {
     if (start == end) return data[start].name;
@@ -194,3 +223,14 @@ axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
     }
 });
 */
+
+app.get('/scryfall', (req, res) => {
+    axios.get('https://api.scryfall.com/cards/search?unique=cards&q=name:/.*drakuseth.*/').then((response) => {
+        const headerDate = (response.headers && response.headers.date ? response.headers.date : 'no response date');
+        console.log('Status Code:", res.status');
+        console.log('Date in Response header:', headerDate);
+
+        const cards = response.data;
+        res.send(cards);
+    });
+});

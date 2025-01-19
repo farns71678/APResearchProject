@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Creation Example</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <style>
+        * {
+            font-family: monospace;
+        }
+
+        #err-response {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Creation Example</h1>
+
+    <form id="input-form">
+        <label for="count">Count: </label>
+        <input type="number" name="count" id="count-input" min="0">
+        <input type="submit" value="Get Users">
+    </form>
+    <div id="err-response"></div>
+    <div id="response"></div>
+
+    <script>
+        $("#input-form").submit(function (event) {
+            event.preventDefault();
+
+            let count = $("#count-input").val();
+
+            $.ajax({
+                url: "./generate?count=" + count,
+                type: "GET",
+                success: function(res) {
+                    $("#err-response").html("");
+                    $("#response").html(JSON.stringify(res));
+                },
+                error: function(xhr, status) {
+                    $("#response").html("");
+                    $("#err-response").html("An error occured when processing the query: " + status);
+                } 
+            });
+        });
+    </script>
+
+</body>
+</html>
