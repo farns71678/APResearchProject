@@ -224,8 +224,8 @@ axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
 });
 */
 
-app.get('/scryfall', (req, res) => {
-    axios.get('https://api.scryfall.com/cards/search?unique=cards&q=name:/.*drakuseth.*/').then((response) => {
+/*app.get('/scryfall', (req, res) => {
+    axios.get('https://api.scryfall.com/cards/search?unique=cards&q=name:/.*drakuseth.').then((response) => {
         const headerDate = (response.headers && response.headers.date ? response.headers.date : 'no response date');
         console.log('Status Code:", res.status');
         console.log('Date in Response header:', headerDate);
@@ -233,4 +233,4 @@ app.get('/scryfall', (req, res) => {
         const cards = response.data;
         res.send(cards);
     });
-});
+});*/
