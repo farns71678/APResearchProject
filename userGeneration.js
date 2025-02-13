@@ -1,11 +1,17 @@
-const fs = require('node:fs/promises');
+const openfs = require('node:fs/promises');
+const fs = require('node:fs');
+const zlib = require('node:zlib');
 const express = require('express');
-const axios = require('axios');
+const { pipeline } = require('node:stream');
+const lzma = require('lzma-native');
 const app = express();
 const port = 3000;
 let maleData = null;
 let femaleData = null;
 let surnameData = null;
+
+// https://nodejs.org/api/zlib.html for compression algorithms (gzip, deflate, and brotli)
+// https://www.npmjs.com/package/lzma-native for lzma (used in 7zip)
 
 // data from statista
 const emailDomains = [
@@ -31,38 +37,7 @@ app.get("/generate", async (req, res) => {
 
         console.log('/generate queried with count=%d', parseInt(req.query.count));
 
-        if (maleData == null) {
-            let male = await readNames('/maleNames.csv');
-            if (male == null) {
-                res.status(400).send("An unexpected error occured when trying to parse male first names.");
-                return;
-            }
-            maleData = await parseNames(male);
-        }
-
-        if (femaleData == null) {
-            let female = await readNames('/femaleNames.csv');
-            if (female == null) {
-                res.status(400).send("An unexpected error occured when trying to parse female first names.");
-                return;
-            }
-            femaleData = await parseNames(female);
-        }
-
-        if (surnameData == null) {
-            let surname = await readNames('/lastNames.csv');
-            if (surname == null) {
-                res.status(400).send("An unexpected error occured when trying to parse surnames.");
-                return;
-            }
-            surnameData = await parseNames(surname);
-        }
-
-
-        let people = [];
-        for (let i = 0; i < parseInt(req.query.count); i++) {
-            people.push(createUser());
-        }
+        let people = await generateUsers(req.query.count);
 
         let response = { users: people };
         /*people.forEach((person) => {
@@ -103,6 +78,36 @@ app.get("/names", async (req, res) => {
     response += "</tbody></table>";
 
     res.send(response);
+});
+
+app.get('/csv', async (req, res) => {
+    if (req.query.count == undefined) {
+        console.log("/generate request send without 'count' parameter");
+        res.status(400).send("Error: include count parameter in request.");
+        return;
+    }
+
+    let users = await generateUsers(req.query.count);
+    let content = "";
+
+    for (let i = 0; i < users.length; i++) {
+        content += users[i].name + "," + users[i].surname + "," + users[i].birthdate + "," + users[i].email + (i < users.length - 1 ? "\n" : "");
+    }
+
+    try {
+        //await openfs.writeFile(__dirname + '/users.csv', content);
+        let out = fs.createWriteStream(__dirname + "/users.csv.xz");
+
+        pipeline(content, lzma.createCompressor(), out, (err) => {
+            if (err) console.log("An error occured while compressing data: \n" + err);
+            else console.log("Compression succeeded");
+        });
+    }
+    catch (err) {
+        console.log(err);
+    }
+    
+    res.status(200).send("Wrote to file");
 });
 
 app.listen(port, () => {
@@ -168,22 +173,12 @@ function randomEmail(firstName, surname) {
     }
     if (provider == "") provider = "gmail.com";
 
-    return firstName.toLower() + "." + surname.toLower() + randDigits + "@" + provider;
+    return firstName.toLowerCase() + "." + surname.toLowerCase() + randDigits + "@" + provider;
 }
-
-
-/*function findName(data, target, start, end) {
-    if (start == end) return data[start].name;
-
-    let mid = Math.round(start + (end - start) / 2);
-    if (data[mid].num > target) return findName(data, target, mid, end);
-    else if (data[mid].num < target) return findName(data, target, start, mid);
-    else return data[mid].name;
-}*/
 
 async function readNames(file) {
     try {
-        let data = await fs.readFile(__dirname + file, {encoding: 'utf-8'});
+        let data = await openfs.readFile(__dirname + file, {encoding: 'utf-8'});
         return data;
     }
     catch (err) {
@@ -210,27 +205,39 @@ async function parseNames(data) {
     }
 }
 
-/*
-axios.get('https://jsonplaceholder.typicode.com/users').then(res => {
-    const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
-    console.log('Status Code:', res.status);
-    console.log('Date in Response header:', headerDate);
-
-    const users = res.data;
-    console.log(users);
-    /*for(let user of users) {
-        console.log(`Got user with id: ${user.id}, name: ${user.name}`);
+async function generateUsers(count) {
+    if (maleData == null) {
+        let male = await readNames('/maleNames.csv');
+        if (male == null) {
+            res.status(400).send("An unexpected error occured when trying to parse male first names.");
+            return;
+        }
+        maleData = await parseNames(male);
     }
-});
-*/
 
-/*app.get('/scryfall', (req, res) => {
-    axios.get('https://api.scryfall.com/cards/search?unique=cards&q=name:/.*drakuseth.').then((response) => {
-        const headerDate = (response.headers && response.headers.date ? response.headers.date : 'no response date');
-        console.log('Status Code:", res.status');
-        console.log('Date in Response header:', headerDate);
+    if (femaleData == null) {
+        let female = await readNames('/femaleNames.csv');
+        if (female == null) {
+            res.status(400).send("An unexpected error occured when trying to parse female first names.");
+            return;
+        }
+        femaleData = await parseNames(female);
+    }
 
-        const cards = response.data;
-        res.send(cards);
-    });
-});*/
+    if (surnameData == null) {
+        let surname = await readNames('/lastNames.csv');
+        if (surname == null) {
+            res.status(400).send("An unexpected error occured when trying to parse surnames.");
+            return;
+        }
+        surnameData = await parseNames(surname);
+    }
+
+
+    let people = [];
+    for (let i = 0; i < parseInt(count); i++) {
+        people.push(createUser());
+    }
+
+    return people;
+}

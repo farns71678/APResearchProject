@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "lzma-native": "^8.0.6"
   }
 }
