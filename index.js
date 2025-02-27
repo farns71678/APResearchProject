@@ -438,37 +438,34 @@ function createCommands(users) {
     commands.length = users.length * 3;
     for (let i = 0; i < users.length; i++) {
         // create user command
-        let createCommand = toHexString(getCurrentCommandIndex(), 8) + "0a"
+        let createCommand = "0a"
             + toHexString(users[i].username.length, 1)
             + toHexString(users[i].surname.length, 1)
             + toHexString(users[i].email.length, 1)
             + toHexString(users[i].name.length, 1)
             + toHexString(users[i].birthdate.length, 1)
-            + toHexString(users[i].username)
-            + toHexString(users[i].surname)
-            + toHexString(users[i].email)
-            + toHexString(users[i].name)
-            + toHexString(users[i].birthdate)
-            + (users[i].gender == true ? "01" : "00");
+            + toHexString(users[i].username
+                 + users[i].surname
+                 + users[i].email
+                 + users[i].name
+                 + users[i].birthdate)
+            + (users[i].gender ? "01" : "00");
         
         // modify data command
         let modifyRand = getRandomNumber() < 0.5;
-        let modifyCommand = toHexString(getCurrentCommandIndex(), 8)
-            + toHexString((modifyRand ? users[i].surname : users[i].email).length, 1)
+        let modifyCommand = toHexString((modifyRand ? users[i].surname : users[i].email).length, 1)
             + toHexString((modifyRand ? users[i].surname : users[i].email));
         
         // delete user or modify data command
         let lastCommand = "";
         if (getRandomNumber() < 0.7) {
             let modifyRandLast = getRandomNumber() < 0.5;
-            lastCommand = toHexString(getCurrentCommandIndex(), 8)
-                + toHexString((modifyRandLast ? users[i].surname : users[i].email).length, 1)
+            lastCommand = toHexString((modifyRandLast ? users[i].surname : users[i].email).length, 1)
                 + toHexString((modifyRandLast ? users[i].surname : users[i].email));
         }
         else {
-            // delete user commad
-            lastCommand = toHexString(getCurrentCommandIndex(), 8)
-                + toHexString(users[i].username.length, 1)
+            // delete user command
+            lastCommand = toHexString(users[i].username.length, 1)
                 + toHexString(users[i].username);
         }
 
@@ -483,3 +480,17 @@ function createCommands(users) {
 async function writeBlock(blockData, stream) {
     stream.write(Buffer.from(blockData, 'hex'));
 }
+
+let tests = [
+    {size: 1000, type: "lzma"},
+    {size: 1000, type: "gzip"},
+    {size: 1000, type: "deflate"},
+    {size: 1000, type: "gzip"},
+    {size: 1000, type: "none"}
+];
+
+(async () => {
+    for (let i = 0; i < tests.length; i++) {
+        await createBlockchain(tests[i].size, tests[i].type);
+    }
+})();
