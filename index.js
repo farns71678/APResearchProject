@@ -5,7 +5,6 @@ const express = require('express');
 const { pipeline } = require('node:stream');
 const lzma = require('lzma-native');
 const crypto = require('crypto');
-const { isNullOrUndefined } = require('node:util');
 const app = express();
 const port = 3000;
 let maleData = null;
@@ -13,7 +12,8 @@ let femaleData = null;
 let surnameData = null;
 let randomNumbers = [];
 let randomNumberIndex = 0;
-let currentCommandIndex = 0;
+let randomIVs = [];
+let randomIVIndex = 0;
 
 // https://nodejs.org/api/zlib.html for compression algorithms (gzip, deflate, and brotli)
 // https://www.npmjs.com/package/lzma-native for lzma (used in 7zip)
@@ -115,9 +115,9 @@ app.get('/csv', async (req, res) => {
     res.status(200).send("Wrote to file");
 });
 
-app.listen(port, () => {
+/*app.listen(port, () => {
     console.log("Server is running on http://localhost:" + port);
-});
+});*/
 
 function createUser() {
     // gender: false = male, true = female
@@ -198,6 +198,12 @@ function getRandomNumber() {
     if (randomNumberIndex == randomNumbers.length - 1) randomNumberIndex = 0;
     else randomNumberIndex++;
     return randomNumbers[randomNumberIndex];
+}
+
+function getRandomIV() {
+    if (randomIVIndex > randomIVs.length - 4) randomIVIndex = Math.floor(getRandomNumber() * 3);
+    else randomIVIndex += 3;
+    return randomIVs[randomIVIndex];
 }
 
 function getCurrentCommandIndex() {
@@ -288,7 +294,7 @@ app.get('/simulate-blockchain', async (req, res) => {
     }
 
     // all's well with the query so start creating blockchain and return good
-    await createBlockchain(req.query.users, req.query.type);
+    createBlockchain(req.query.users, req.query.type);
 
     res.status(200).send("Creating Blockchain with user pool size: " + req.query.users + " and compression type: " + req.query.type);
 
@@ -345,7 +351,7 @@ function toHexString() {
 }
 
 function encrypt(data, key) {
-    const iv = crypto.randomBytes(16); // Initialization vector
+    const iv = getRandomIV(); // Initialization vector
     key = crypto.scryptSync(key, 'salt', 32);
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encrypted = cipher.update(data, 'hex', 'hex') + cipher.final('hex');
@@ -357,6 +363,13 @@ let passwordString = "";
 let passwordStringLen = 0;
 
 async function createBlockchain(userSize, compressionType) {
+    maleData = null;
+    femaleData = null;
+    surnameData = null; 
+    randomNumbers = [];
+    randomNumberIndex = 0;
+    randomIVs = [];
+    randomIVIndex = 0;
     fs.writeFileSync(__dirname + "/blockchain.bin", Buffer.from(toHexString(0, 8), 'hex'));
     let stream = fs.createWriteStream(__dirname + "/blockchain.bin", {flags: 'a'});
 
@@ -367,6 +380,12 @@ async function createBlockchain(userSize, compressionType) {
     randomNumbers.length = randomNumberSize;
     for (let i = 0; i < randomNumberSize; i++) {
         randomNumbers[i] = Math.random();
+    }
+
+    let randomIVSize = 500;
+    randomIVs.length = randomIVSize;
+    for (let i = 0; i < randomIVSize; i++) {
+        randomIVs[i] = crypto.randomBytes(16);
     }
 
     // initialize compression
@@ -418,7 +437,7 @@ async function createBlockchain(userSize, compressionType) {
                     console.log("An error occured when compressing block: " + blocksCreated);
                 });
             }
-            writeBlock(block, stream);
+            await writeBlock(writeData, stream);
             blocksCreated++;
         }
     }
@@ -429,7 +448,7 @@ async function createBlockchain(userSize, compressionType) {
     const stats = fs.statSync(__dirname + "/blockchain.bin");
     console.log(`File Size: ${stats.size}\nBlocks: ${blocksCreated}\n`);
     const outputStream = fs.createWriteStream(__dirname + "/blockchainData.csv", {flags: 'a'});
-    outputStream.write(userSize + "," + compressionType + "," + stats.size + "," + blocksCreated);
+    outputStream.write("\n" + userSize + "," + compressionType + "," + stats.size + "," + blocksCreated);
     outputStream.end();
 }
 
@@ -482,11 +501,7 @@ async function writeBlock(blockData, stream) {
 }
 
 let tests = [
-    {size: 1000, type: "lzma"},
-    {size: 1000, type: "gzip"},
-    {size: 1000, type: "deflate"},
-    {size: 1000, type: "gzip"},
-    {size: 1000, type: "none"}
+    {size: 10000, type: "none"}
 ];
 
 (async () => {
