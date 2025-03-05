@@ -430,12 +430,28 @@ async function createBlockchain(userSize, compressionType) {
                 let encryptedCommand = encrypt(commands[j], password);
                 blockData += toHexString(encryptedCommand.length, 2) + encryptedCommand;
             }
-            let block = blockHeader + blockData + blockFooter;
-            let writeData = "";
-            if (comp != null) {
-                pipeline(block, comp, writeData, (err) => {
+            
+            stream.write(Buffer.from(blockHeader + blockFooter, 'hex'));
+            /*if (comp != null) {
+                pipeline(Buffer.from(blockData, 'hex'), comp, stream, (err) => {
                     console.log("An error occured when compressing block: " + blocksCreated);
                 });
+            }*/
+            let writeData = null;
+            if (compressionType == "lzma") {
+
+            }
+            else if (compressionType == "gzip") {
+                writeData = zlib.gzipSync(Buffer.from(blockData, 'hex'));
+            }
+            else if (compressionType == "deflate") {
+                writeData = zlib.deflateSync(Buffer.from(blockData, 'hex'));
+            }
+            else if (compressionType == "brotli") {
+                writeData = zlib.brotliCompressSync(Buffer.from(blockData, 'hex'));
+            }
+            else {
+                writeData = blockData;
             }
             await writeBlock(writeData, stream);
             blocksCreated++;
@@ -501,7 +517,17 @@ async function writeBlock(blockData, stream) {
 }
 
 let tests = [
-    {size: 10000, type: "none"}
+    {size: 100, type: "none"},
+    {size: 10000, type: "deflate"},
+    {size: 10000, type: "deflate"},
+    {size: 10000, type: "deflate"},
+    {size: 10000, type: "deflate"},
+    {size: 10000, type: "brotli"},
+    {size: 10000, type: "brotli"},
+    {size: 100000, type: "brotli"},
+    {size: 100000, type: "gzip"},
+    {size: 100000, type: "deflate"},
+    {size: 100000, type: "none"}
 ];
 
 (async () => {
