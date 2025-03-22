@@ -5,6 +5,7 @@ const express = require('express');
 const { pipeline } = require('node:stream');
 const lzma = require('lzma-native');
 const crypto = require('crypto');
+const { buffer } = require('node:stream/consumers');
 const app = express();
 const port = 3000;
 let maleData = null;
@@ -439,7 +440,9 @@ async function createBlockchain(userSize, compressionType) {
             }*/
             let writeData = null;
             if (compressionType == "lzma") {
-
+                writeData = await lzma.compress(Buffer.from(blockData, 'hex'), {preset: 9}).then((result) => {
+                    return result;
+                });
             }
             else if (compressionType == "gzip") {
                 writeData = zlib.gzipSync(Buffer.from(blockData, 'hex'));
@@ -449,6 +452,12 @@ async function createBlockchain(userSize, compressionType) {
             }
             else if (compressionType == "brotli") {
                 writeData = zlib.brotliCompressSync(Buffer.from(blockData, 'hex'));
+            }
+            else if (compressionType.substring(0, 4) == "lzma") {
+                const level = parseInt(compressionType.substring(6));
+                writeData = await lzma.compress(Buffer.from(blockData, 'hex'), {preset: level}).then((result) => {
+                    return result;
+                });
             }
             else {
                 writeData = blockData;
@@ -518,16 +527,45 @@ async function writeBlock(blockData, stream) {
 
 let tests = [
     {size: 100, type: "none"},
-    {size: 10000, type: "deflate"},
-    {size: 10000, type: "deflate"},
-    {size: 10000, type: "deflate"},
-    {size: 10000, type: "deflate"},
-    {size: 10000, type: "brotli"},
-    {size: 10000, type: "brotli"},
-    {size: 100000, type: "brotli"},
-    {size: 100000, type: "gzip"},
-    {size: 100000, type: "deflate"},
-    {size: 100000, type: "none"}
+    {size: 10000, type: "lzma-8"},
+    {size: 10000, type: "lzma-8"},
+    {size: 10000, type: "lzma-8"},
+    {size: 10000, type: "lzma-8"},
+    {size: 10000, type: "lzma-7"},
+    {size: 10000, type: "lzma-7"},
+    {size: 10000, type: "lzma-7"},
+    {size: 10000, type: "lzma-7"},
+    {size: 10000, type: "lzma-7"},
+    {size: 10000, type: "lzma-6"},
+    {size: 10000, type: "lzma-6"},
+    {size: 10000, type: "lzma-6"},
+    {size: 10000, type: "lzma-6"},
+    {size: 10000, type: "lzma-6"},
+    {size: 10000, type: "lzma-5"},
+    {size: 10000, type: "lzma-5"},
+    {size: 10000, type: "lzma-5"},
+    {size: 10000, type: "lzma-5"},
+    {size: 10000, type: "lzma-5"},
+    {size: 10000, type: "lzma-4"},
+    {size: 10000, type: "lzma-4"},
+    {size: 10000, type: "lzma-4"},
+    {size: 10000, type: "lzma-4"},
+    {size: 10000, type: "lzma-4"},
+    {size: 10000, type: "lzma-3"},
+    {size: 10000, type: "lzma-3"},
+    {size: 10000, type: "lzma-3"},
+    {size: 10000, type: "lzma-3"},
+    {size: 10000, type: "lzma-3"},
+    {size: 10000, type: "lzma-2"},
+    {size: 10000, type: "lzma-2"},
+    {size: 10000, type: "lzma-2"},
+    {size: 10000, type: "lzma-2"},
+    {size: 10000, type: "lzma-2"},
+    {size: 10000, type: "lzma-1"},
+    {size: 10000, type: "lzma-1"},
+    {size: 10000, type: "lzma-1"},
+    {size: 10000, type: "lzma-1"},
+    {size: 10000, type: "lzma-1"}
 ];
 
 (async () => {
