@@ -1,0 +1,108 @@
+User Size:			1000
+Algorithm:			none
+Mean:				366658
+Standard Deviation:	1.74739
+Blocks:				3
+Mean Block Size:	122219
+Rows:				5
+Compression:		100%
+
+User Size:			10000
+Algorithm:			none
+Mean:				1.79056e+06
+Standard Deviation:	162.297
+Blocks:				15
+Mean Block Size:	119371
+Rows:				5
+Compression:		100%
+
+User Size:			1000
+Algorithm:			deflate
+Mean:				317843
+Standard Deviation:	97.9438
+Blocks:				3
+Mean Block Size:	105948
+Rows:				4
+Compression:		86.6867%
+
+User Size:			10000
+Algorithm:			deflate
+Mean:				1.58495e+06
+Standard Deviation:	13.3437
+Blocks:				15
+Mean Block Size:	105663
+Rows:				5
+Compression:		88.5166%
+
+User Size:			1000
+Algorithm:			brotli
+Mean:				320081
+Standard Deviation:	17.9988
+Blocks:				3
+Mean Block Size:	106694
+Rows:				5
+Compression:		87.2972%
+
+User Size:			10000
+Algorithm:			brotli
+Mean:				1.49891e+06
+Standard Deviation:	81.2818
+Blocks:				15
+Mean Block Size:	99927
+Rows:				5
+Compression:		83.7114%
+
+User Size:			1000
+Algorithm:			gzip
+Mean:				347078
+Standard Deviation:	94.9757
+Blocks:				3
+Mean Block Size:	115693
+Rows:				5
+Compression:		94.6602%
+
+User Size:			10000
+Algorithm:			gzip
+Mean:				1.73924e+06
+Standard Deviation:	787.082
+Blocks:				15
+Mean Block Size:	115949
+Rows:				5
+Compression:		97.1338%
+
+User Size:			1000
+Algorithm:			lzma
+Mean:				317896
+Standard Deviation:	177.774
+Blocks:				3
+Mean Block Size:	105965
+Rows:				5
+Compression:		86.7012%
+
+User Size:			10000
+Algorithm:			lzma
+Mean:				1.4965e+06
+Standard Deviation:	34.845
+Blocks:				15
+Mean Block Size:	99766.5
+Rows:				5
+Compression:		83.5769%
+
+User Size:			1000
+Algorithm:			lzma-9
+Mean:				303732
+Standard Deviation:	7.61883
+Blocks:				3
+Mean Block Size:	101244
+Rows:				5
+Compression:		82.8382%
+
+User Size:			10000
+Algorithm:			lzma-9
+Mean:				1.51375e+06
+Standard Deviation:	10.7308
+Blocks:				15
+Mean Block Size:	100916
+Rows:				5
+Compression:		84.5402%
+

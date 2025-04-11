@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
+/// @brief struct for data from blockchainData.csv
 struct blockchain_data {
     int userSize, chainSize, blockNum;
     std::string alg;
@@ -19,17 +20,22 @@ struct blockchain_data {
 };
 
 struct stat_data {
-    double mean, standardDeviation;
-    int size;
+    double mean, standardDeviation, meanBlock;
+    int size, rows, blocks;
+    std::string alg;
 
-    stat_data(double m, double sd, int s) {
+    stat_data(double m, double sd, double mb, int s, int r, int b, std::string a) {
         this->mean = m;
         this->standardDeviation = sd;
+        this->meanBlock = mb;
         this->size = s;
+        this->rows = r;
+        this->blocks = b;
+        this->alg = a;
     }
 };
 
-stat_data calcStats(std::string type, int userSize, std::vector<blockchain_data> &rows);
+stat_data* calcStats(std::string type, int userSize, std::vector<blockchain_data> &rows);
 
 int main() {
     std::string line;
@@ -69,18 +75,47 @@ int main() {
         std::vector<int> sizes;
 
         for (int i = 0; i < rows.size(); i++) {
-            if (std::find(algs.begin(), algs.end(), rows[i].alg) != algs.end()) {
+            if (std::find(algs.begin(), algs.end(), rows[i].alg) == algs.end()) {
                 algs.push_back(rows[i].alg);
             }
-            if (std::find(sizes.begin(), sizes.end(), rows[i].userSize) != sizes.end()) {
+            if (std::find(sizes.begin(), sizes.end(), rows[i].userSize) == sizes.end()) {
                 sizes.push_back(rows[i].userSize);
             }
         }
 
+        std::vector<stat_data*> statRows{};
         for (int i = 0; i < algs.size(); i++) {
             for (int j = 0; j < sizes.size(); j++) {
-                stat_data stats = calcStats(algs[i], sizes[i], rows);
-                out << "User Size:\t\033[96m" << sizes[i] << "\033[0m\nAlgorithm:\t\033[96m" << algs[i] << "\033[0m\nMean:\t\033[96m" << stats.mean << "\033[0m\nStandard Deviation:\t\033[96m" << stats.standardDeviation << "\033[0m\nRows:\t\033[96m" << stats.size << "\033[0m\n\n";
+                statRows.push_back(calcStats(algs[i], sizes[j], rows));
+                /*if (stats != nullptr) {
+                    std::cout << "User Size:\t\t\033[96m" << sizes[j] << "\033[0m\nAlgorithm:\t\t\033[96m" << algs[i] << "\033[0m\nMean:\t\t\t\033[96m" << stats->mean << "\033[0m\nStandard Deviation:\t\033[96m" << stats->standardDeviation << "\033[0m\nRows:\t\t\t\033[96m" << stats->size << "\033[0m\n\n";
+                    out << "User Size:\t\t\t" << sizes[j] << "\nAlgorithm:\t\t\t" << algs[i] << "\nMean:\t\t\t\t" << stats->mean << "\nStandard Deviation:\t" << stats->standardDeviation << "\nRows:\t\t\t\t" << stats->size << "\n\n";
+                    delete stats;
+                }*/
+            }
+        }
+
+        std::vector<std::pair<int,int>> controlSizes{};
+        for (int i = 0; i < sizes.size(); i++) {
+            for (int j = 0; j < statRows.size(); j++) {
+                if (statRows[j]->size == sizes[i] && statRows[j]->alg == "none") controlSizes.push_back(std::pair<int, int>(sizes[i], statRows[j]->mean));
+            }
+        }
+
+        for (auto row : statRows) {
+            if (row != nullptr) {
+                std::cout << "User Size:\t\t\033[96m" << row->size << "\033[0m\nAlgorithm:\t\t\033[96m" << row->alg << "\033[0m\nMean:\t\t\t\033[96m" << row->mean << "\033[0m\nStandard Deviation:\t\033[96m" << row->standardDeviation << "\033[0m\nBlocks:\t\t\t\033[96m" << row->blocks << "\033[0m\nMean Block Size:\t\033[96m" << row->meanBlock << "\033[0m\nRows:\t\t\t\033[96m" << row->rows << "\033[0m\n";
+                out << "User Size:\t\t\t" << row->size << "\nAlgorithm:\t\t\t" << row->alg << "\nMean:\t\t\t\t" << row->mean << "\nStandard Deviation:\t" << row->standardDeviation<< "\nBlocks:\t\t\t\t" << row->blocks << "\nMean Block Size:\t" << row->meanBlock << "\nRows:\t\t\t\t" << row->rows << "\n";
+
+                for (auto controlSize : controlSizes) {
+                    if (controlSize.first == row->size) {
+                        std::cout << "Compression:\t\t\033[96m" << (100.0 / controlSize.second * row->mean) << "%\033[0m\n\n";
+                        out << "Compression:\t\t" << (100.0 / controlSize.second * row->mean) << "%\n\n";
+                    }
+                }
+
+                delete row;
+                row = nullptr;
             }
         }
 
@@ -91,22 +126,29 @@ int main() {
     return 0;
 }
 
+
+
+
 /// @brief averages chain sizes of the same compression type and user pool size
 /// @param type string representation of algorithm type
 /// @param userSize user pool size
 /// @param rows reference to CSV data
 /// @return an instance of stat_data
-stat_data calcStats(std::string type, int userSize, std::vector<blockchain_data> &rows) {
+stat_data* calcStats(std::string type, int userSize, std::vector<blockchain_data> &rows) {
     double total = 0;
     int count = 0;
+    double blockTotal = 0;
 
     for (auto &row : rows) {
         if (row.alg == type && row.userSize == userSize) {
             total += row.chainSize;
+            blockTotal += row.blockNum;
             count++;
         }
     }
-    double mean = total / count;
+
+    if (count == 0) return nullptr;
+    const double mean = total / count;
 
     // calculate standard deviation
     total = 0;
@@ -118,5 +160,5 @@ stat_data calcStats(std::string type, int userSize, std::vector<blockchain_data>
 
     double sd = std::sqrt(total / mean);
 
-    return stat_data(mean, sd, count);
+    return new stat_data(mean, sd, mean / (blockTotal / count), userSize, count, (int)(blockTotal / count), type);
 }
